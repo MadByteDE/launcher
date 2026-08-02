@@ -103,12 +103,14 @@ public class LinuxHelper(ILogger<LinuxHelper> logger, ConfigHelper configHelper)
         {
             if (launchSetting.Key.StartsWith("-"))
             {
-                // this should be an arg
-                process.ArgumentList.Add($"{launchSetting.Key}={launchSetting.Value}");
+                // This should be an argument
+                process.ArgumentList.Add(
+                    string.IsNullOrWhiteSpace(launchSetting.Value) ? launchSetting.Key : $"{launchSetting.Key}={launchSetting.Value}"
+                );
             }
             else
             {
-                // this should be an env
+                // This should be an environment variable
                 process.Environment.Add(launchSetting.Key, launchSetting.Value);
             }
         }
@@ -127,7 +129,6 @@ public class LinuxHelper(ILogger<LinuxHelper> logger, ConfigHelper configHelper)
         return true;
     }
 
-    // TODO: Maybe some Regex Guru can make this simpler
     private Dictionary<string, string> ParseLaunchSettings()
     {
         var launchSettings = configHelper.GetConfig().LinuxSettings.LaunchSettings;
@@ -138,101 +139,59 @@ public class LinuxHelper(ILogger<LinuxHelper> logger, ConfigHelper configHelper)
             return result;
         }
 
-        // So parsing this string into usable EnvVar's and Arguments might be a bit weird
-        // Most of the time I'd expect no spaces:
-        // EnvironmentVariableName=EnvironmentVariableValue
-        // -ArgumentName=ArgumentValue
-        // The - is the diff between them and EnvVar's afaik are all uppercase
-        // The only Edge Case I can think of is using a path as a variable in either. which would mean " " wrap the variable
-        // -ArgWantingPath="/path/to/something with a space"
-        // And because of this means I cant just split on whitespace.
-
-        // Trim outer edge
-        // MANGOHUD=1 -arg1=testing -arg2="some path with spaces/in it"
-        launchSettings = launchSettings.Trim();
-
-        var stringBuilder = new StringBuilder();
-        var name = string.Empty;
-        var value = string.Empty;
-        var isName = true; // Start as true as this comes first
-        var isValue = false;
-        var valueHasQuotes = false;
-        var checkedForQuotes = false;
-        var reset = false;
-
         try
         {
-            foreach (var charFromStr in launchSettings)
+            launchSettings = launchSettings.Trim();
+            var tokens = new List<string>();
+            var current = new StringBuilder();
+            var inQuotes = false;
+
+            // Tokenize the string while respecting quoted values
+            foreach (var ch in launchSettings)
             {
-                // Go through the string till we hit a =
-                // we now want to deal with the value
-                if (isName && charFromStr == '=')
+                if (ch == '"')
                 {
-                    isName = false;
-                    isValue = true;
-                    name = stringBuilder.ToString();
-                    stringBuilder.Clear();
-                    continue;
+                    inQuotes = !inQuotes;
+                    current.Append(ch);
                 }
-
-                if (isValue && checkedForQuotes && !valueHasQuotes && charFromStr == ' ')
+                else if (ch == ' ' && !inQuotes)
                 {
-                    // end of Value, wasnt quotes so is whitespace
-                    // dont append and reset trackers and continue;
-                    value = stringBuilder.ToString();
-                    reset = true;
+                    if (current.Length > 0)
+                    {
+                        tokens.Add(current.ToString());
+                        current.Clear();
+                    }
                 }
-
-                if (isValue && valueHasQuotes && charFromStr == '"')
+                else
                 {
-                    // this should be the end of the quoted string
-                    stringBuilder.Append("\"");
-                    value = stringBuilder.ToString();
-                    reset = true;
+                    current.Append(ch);
                 }
-
-                // the value could start with quotes " - this means we have to handle this variable slightly differently
-                if (isValue && !checkedForQuotes)
-                {
-                    // check to see if the first char is a "
-                    valueHasQuotes = charFromStr == '"';
-                    checkedForQuotes = true;
-                }
-
-                if (isValue && reset)
-                {
-                    result.Add((string)name.Clone(), (string)value.Clone());
-                    name = string.Empty;
-                    value = string.Empty;
-                    isName = true;
-                    isValue = false;
-                    valueHasQuotes = false;
-                    checkedForQuotes = false;
-                    stringBuilder.Clear();
-                    reset = false;
-                    continue;
-                }
-
-                // At the end of the value, there should be a space between envs and args
-                if (isName && charFromStr == ' ')
-                {
-                    // We should be able to skip this
-                    continue;
-                }
-
-                stringBuilder.Append(charFromStr);
             }
 
-            // check if the name and value have anything at the end, if so, last arg/env had no space or " so add whats there
-            if (!string.IsNullOrEmpty(name))
+            if (current.Length > 0)
             {
-                value = stringBuilder.ToString();
-                result.Add((string)name.Clone(), (string)value.Clone());
+                tokens.Add(current.ToString());
+            }
+
+            // Parse each token into name and value
+            foreach (var token in tokens)
+            {
+                var eqIndex = token.IndexOf('=');
+                var name = eqIndex >= 0 ? token[..eqIndex] : token;
+                var value = eqIndex >= 0 ? token[(eqIndex + 1)..] : string.Empty;
+
+                // Remove surrounding quotes if the value is quoted
+                if (value.StartsWith('"') && value.EndsWith('"') && value.Length >= 2)
+                {
+                    value = value[1..^1];
+                }
+
+                result.Add(name, value);
             }
         }
         catch (Exception e)
         {
-            logger.LogWarning("unable to parse launch Settings of: {setting}, please format correctly: {e}", launchSettings, e);
+            logger.LogWarning("Unable to parse launch settings of: {setting}, please format correctly: {e}", launchSettings, e);
             return new Dictionary<string, string>();
         }
 

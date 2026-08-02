@@ -3,9 +3,13 @@
 
 <MudContainer Class="pa-0">
     <MudLink Color="Color.Default" Underline="Underline.None" Disabled="Disabled" Class="@(GetLinkClasses())">
-        <MudTextField Value="ConfigHelper.GetConfig().GamePath" Label="@(LocaleHelper.Get("setting_game_path"))" Variant="Variant.Outlined" Immediate="true"
-                      Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Folder" AdornmentColor="Color.Info"
-                      OnAdornmentClick="SetGamePath"/>
+        <div class="d-flex gap-2 align-center" style="width: 100%;">
+            <MudTextField @bind-Value="GamePath" Label="@(LocaleHelper.Get("setting_game_path"))" Variant="Variant.Outlined" Immediate="true"
+                          Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Folder" AdornmentColor="Color.Info"
+                          OnAdornmentClick="SetGamePath" Style="flex: 1;"/>
+            <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Primary" OnClick="SaveGamePath"
+                           Disabled="GamePath == ConfigHelper.GetConfig().GamePath"/>
+        </div>
     </MudLink>
 </MudContainer>
 @if (AddDiv)
@@ -14,12 +18,18 @@
 }
 
 @code {
-
     [Parameter]
     public bool Disabled { get; set; }
 
     [Parameter]
     public bool AddDiv { get; set; }
+
+    private string GamePath = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        GamePath = ConfigHelper.GetConfig().GamePath;
+    }
 
     private string GetLinkClasses()
     {
@@ -42,14 +52,16 @@
     {
         var folder = await Launcher.App.MainWindow.ShowOpenFolderAsync(title: "Choose Folder");
 
-        // no folder was selected
         if (!folder.Any())
-        {
             return;
-        }
 
-        ConfigHelper.SetGamePath(folder.FirstOrDefault()!);
-        StateHasChanged();
+        GamePath = folder.FirstOrDefault()!;
+        SaveGamePath();
     }
 
+    private void SaveGamePath()
+    {
+        ConfigHelper.SetGamePath(GamePath);
+        StateHasChanged();
+    }
 }

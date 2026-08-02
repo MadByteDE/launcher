@@ -1,10 +1,15 @@
 @inject ConfigHelper ConfigHelper
+@inject LocaleHelper LocaleHelper
 
 <MudContainer Class="pa-0">
     <MudLink Color="Color.Default" Underline="Underline.None" Disabled="Disabled" Class="@(GetLinkClasses())">
-        <MudTextField Value="@ConfigHelper.GetConfig().LinuxSettings.UmuPath" Label="Umu Path" Variant="Variant.Outlined" Immediate="true"
-                      Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Folder"
-                      AdornmentColor="Color.Info" OnAdornmentClick="SetUmuPath"/>
+        <div class="d-flex gap-2 align-center" style="width: 100%;">
+            <MudTextField @bind-Value="UmuPath" Label="@(LocaleHelper.Get("linux_add_umu"))" Variant="Variant.Outlined" Immediate="true"
+                          Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Folder"
+                          AdornmentColor="Color.Info" OnAdornmentClick="SetUmuPath" Style="flex: 1;"/>
+            <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Primary" OnClick="SaveUmuPath" 
+                           Disabled="UmuPath == ConfigHelper.GetConfig().LinuxSettings.UmuPath"/>
+        </div>
     </MudLink>
 </MudContainer>
 @if (AddDiv)
@@ -18,6 +23,13 @@
 
     [Parameter]
     public bool AddDiv { get; set; }
+
+    private string UmuPath = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        UmuPath = ConfigHelper.GetConfig().LinuxSettings.UmuPath;
+    }
 
     private string GetLinkClasses()
     {
@@ -38,16 +50,20 @@
 
     private async Task SetUmuPath()
     {
-        var folder = await Launcher.App.MainWindow.ShowOpenFolderAsync(title: "Choose Folder");
+        var file = await Launcher.App.MainWindow.ShowOpenFileAsync(title: "Choose File");
 
-        // no folder was selected
-        if (!folder.Any())
+        if (!file.Any())
         {
             return;
         }
-
-        ConfigHelper.SetLinuxUmuPath(folder.FirstOrDefault()!);
-        StateHasChanged();
+            
+        UmuPath = file.FirstOrDefault()!;
+        SaveUmuPath();
     }
 
+    private void SaveUmuPath()
+    {
+        ConfigHelper.SetLinuxUmuPath(UmuPath);
+        StateHasChanged();
+    }
 }

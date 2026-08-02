@@ -73,27 +73,25 @@
 
     private async Task SetUmuPath()
     {
-        var folder = await Launcher.App.MainWindow.ShowOpenFolderAsync(title: "Choose Folder");
+        var file = await Launcher.App.MainWindow.ShowOpenFileAsync(title: "Choose File");
 
-        // no folder was selected
-        if (!folder.Any())
+        if (!file.Any())
         {
             return;
         }
-
-        LinuxSettings!.UmuPath = folder.FirstOrDefault()!;
+            
+        LinuxSettings!.UmuPath = file.FirstOrDefault()!;
     }
 
     private async Task SetPrefixPath()
     {
         var folder = await Launcher.App.MainWindow.ShowOpenFolderAsync(title: "Choose Folder");
 
-        // no folder was selected
         if (!folder.Any())
         {
             return;
         }
-
+            
         LinuxSettings!.PrefixPath = folder.FirstOrDefault()!;
     }
 

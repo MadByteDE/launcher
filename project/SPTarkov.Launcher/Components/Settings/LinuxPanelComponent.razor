@@ -1,22 +1,60 @@
 @inject ConfigHelper ConfigHelper
 @inject LocaleHelper LocaleHelper
+@inject ILogger<LinuxPanelComponent> Logger
 
 <SettingsSectionComponent Title="@(LocaleHelper.Get("setting_section_linux"))">
     <SettingLinuxPrefixComponent Disabled="false" AddDiv="false"/>
     <SettingLinuxUmuComponent Disabled="false" AddDiv="false" />
     <SettingLinuxLaunchComponent Disabled="false" AddDiv="false"/>
     <SettingLinuxProtonComponent Disabled="false" AddDiv="false"/>
-    <SettingSwitchComponent AddDiv="false" Disabled="true" OptionName="GameMode" Switch="@GameModeSwitch" SwitchFunc="SetGameMode"/>
+    <SettingSwitchComponent 
+        Disabled="!isGameModeAvailable"AddDiv="false" OptionName="GameMode"
+        Switch="@GameModeSwitch" SwitchFunc="SetGameMode"/>
 </SettingsSectionComponent>
 
 @code
 {
     private bool GameModeSwitch { get; set; }
+    private bool isGameModeAvailable { get; set; } = false;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         GameModeSwitch = ConfigHelper.GetConfig().LinuxSettings.GameMode;
-        base.OnInitialized();
+        isGameModeAvailable = await CheckGamemodeInstalledAsync();
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task<bool> CheckGamemodeInstalledAsync()
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "which",
+                    Arguments = "gamemoderun",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process == null) return false;
+
+                process.WaitForExit();
+                
+                return process.ExitCode == 0;
+            }
+            catch (Exception e)
+            {
+                Logger.LogWarning("Failed to check for GameMode: {Exception}", e);
+                
+                // Handle error as if GameMode is not installed
+                return false;
+            }
+        });
     }
 
     private Task SetGameMode()

@@ -341,9 +341,6 @@ public class GameHelper
         return true;
     }
 
-    /// <summary>
-    /// </summary>
-    /// <returns></returns>
     public async Task<bool> MonitorGame()
     {
         // On Linux the process name is cut off - We need to account for that

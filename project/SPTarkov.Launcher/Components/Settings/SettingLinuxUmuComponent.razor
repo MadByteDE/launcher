@@ -75,7 +75,7 @@
         if (!System.IO.File.Exists(NewValue) || System.IO.Path.GetFileName(NewValue) != "umu-run")
         {
             HasError = true;
-            Snackbar.Add(LocaleHelper.Get("setting_save_path_error_2"), Severity.Error);
+            Snackbar.Add(LocaleHelper.Get("setting_save_path_error_1"), Severity.Error);
             return;
         }
 

@@ -219,6 +219,7 @@
   "linux_add_umu_required": "Umu path is required",
   "linux_add_launch_settings": "Launch arguments",
   "linux_add_proton": "Proton Version",
+  "linux_add_proton_path": "Proton検索ディレクトリを追加",
   "linux_add_proton_required": "Proton Version is required",
   "linux_add_proton_placeholder": "Proton version to use",
   "linux_add_launch_settings_placeholder": "MANGOHUD=1",
